@@ -1,0 +1,50 @@
+# This workflow will install Deno then run Deno fmt and test.
+# For more information see: https://github.com/denoland/setup-deno
+
+name: Test
+
+on:
+  push:
+    branches: ["main", "test"]
+  pull_request:
+    branches: ["main", "test"]
+  schedule:
+    # Run every Monday at 00:00 UTC
+    - cron: '0 0 * * 1'
+
+jobs:
+  test:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup repo
+        uses: actions/checkout@v3
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+
+      - name: Check version
+        run: deno -V
+
+      - name: Verify formatting
+        run: deno fmt --check
+
+      - name: Install Fresh
+        run: deno run -A  https://deno.land/x/fresh/init.ts ./tests/work --force --twind --tailwind --vscode
+      
+      - name: Move deno.json
+        run: mv ./tests/work/deno.json ./deno.json
+
+      - name: view deno.json
+        run: cat ./deno.json
+
+      - name: Run tests
+        run: deno test --unstable --allow-read --allow-write --allow-env --allow-net --coverage=./coverage
+      
+      - name: view coverage
+        run: |
+            # reference: https://github.com/jhechtf/code-coverage
+            deno install --allow-read --no-check -n code-coverage https://deno.land/x/code_coverage/cli.ts &&
+            deno coverage --exclude=tests/work/ --lcov --output=lcov.info ./coverage/ &&
+            code-coverage --file lcov.info
